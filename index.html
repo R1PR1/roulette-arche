@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roulette de l'Arche</title>
+<title>Machine de l'Arche</title>
 <style>
   :root{
     --or: #d4af37;
@@ -38,45 +38,54 @@
     line-height:1.4;
     margin-bottom:28px;
   }
-  .zone-roue{
-    position:relative;
-    width:min(340px, 82vw);
-    height:min(340px, 82vw);
-    margin-bottom:28px;
-  }
-  #roue{
-    width:100%;
-    height:100%;
-    border-radius:50%;
-    border:8px solid var(--or);
+
+  .machine{
+    background: linear-gradient(160deg, #3a2a12, #1c1408);
+    border:6px solid var(--or);
+    border-radius:20px;
+    padding:22px 22px 28px;
     box-shadow:
       0 0 0 4px #000 inset,
-      0 10px 30px rgba(0,0,0,.6);
-    transition: transform 4s cubic-bezier(.17,.89,.32,1.15);
-    position:relative;
+      0 14px 34px rgba(0,0,0,.6);
+    margin-bottom:26px;
   }
-  .moyeu{
-    position:absolute;
-    top:50%; left:50%;
-    width:18%; height:18%;
-    background: radial-gradient(circle, var(--or-clair), var(--or) 70%);
-    border-radius:50%;
-    transform:translate(-50%,-50%);
-    box-shadow:0 0 12px rgba(0,0,0,.5);
-    z-index:3;
+  .ecran{
+    background:#050705;
+    border:4px solid #000;
+    border-radius:12px;
+    padding:16px;
+    display:flex;
+    gap:12px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,.8);
   }
-  .pointeur{
-    position:absolute;
-    top:-14px; left:50%;
-    width:0; height:0;
-    border-left:14px solid transparent;
-    border-right:14px solid transparent;
-    border-top:24px solid var(--or);
-    transform:translateX(-50%);
-    z-index:4;
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,.6));
+  .rouleau{
+    width:88px;
+    height:100px;
+    background: linear-gradient(180deg, #16241d, #0b140f);
+    border:3px solid var(--or);
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:3rem;
+    overflow:hidden;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,.6);
   }
+  .rouleau span{
+    display:inline-block;
+    transition: transform .15s ease;
+  }
+  .rouleau.arret span{
+    animation: rebond .25s ease;
+  }
+  @keyframes rebond{
+    0%{ transform:scale(1.3); }
+    60%{ transform:scale(.92); }
+    100%{ transform:scale(1); }
+  }
+
   #bouton-lancer{
+    margin-top:22px;
     background: linear-gradient(180deg, var(--or-clair), var(--or));
     color:#1a1204;
     font-weight:bold;
@@ -145,21 +154,22 @@
 </head>
 <body>
 
-  <h1>🐑 Roulette de l'Arche 🕊️</h1>
+  <h1>🐑 Machine de l'Arche 🕊️</h1>
   <p class="sous-titre">
-    Fais tourner la roue comme au casino. La roue compte 40 cases, comme les
-    40 jours et 40 nuits du déluge&nbsp;: une seule case verte fait gagner
-    (2,5&nbsp;% de chance). Si tu tombes dessus, tu découvres un des animaux
-    embarqués avec Noé.
+    Trois rouleaux, comme une machine à sous de casino. Il faut aligner le
+    même animal sur les trois cases pour gagner : 2,5&nbsp;% de chance à
+    chaque tour. Si tu gagnes, tu découvres l'animal tiré.
   </p>
 
-  <div class="zone-roue">
-    <div class="pointeur"></div>
-    <div id="roue"></div>
-    <div class="moyeu"></div>
+  <div class="machine">
+    <div class="ecran">
+      <div class="rouleau" id="rouleau-0"><span>🌊</span></div>
+      <div class="rouleau" id="rouleau-1"><span>🌊</span></div>
+      <div class="rouleau" id="rouleau-2"><span>🌊</span></div>
+    </div>
   </div>
 
-  <button id="bouton-lancer">Lancer la roue</button>
+  <button id="bouton-lancer">Tirer le levier</button>
   <div class="compteur">Tours joués : <span id="nb-tours">0</span> · Gagnés : <span id="nb-gagnes">0</span></div>
 
   <footer>Jeu sans argent réel, purement pour le plaisir. Les probabilités sont fixes (2,5&nbsp;% de gain par tour) et indépendantes d'un tour à l'autre.</footer>
@@ -187,37 +197,56 @@
     { emoji:"🐍", nom:"Le serpent", texte:"On le trouve presque partout dans le monde sauf aux pôles. Carnivore selon l'espèce (rongeurs, insectes...), il avale ses proies entières, sans les mâcher." },
   ];
 
-  const NB_CASES = 40;
-  const DEG_PAR_CASE = 360 / NB_CASES;
   const CHANCE_DE_GAGNER = 0.025; // 2,5 %
+  const DUREES_ARRET = [1100, 1700, 2300]; // ms, arrêt échelonné des 3 rouleaux
 
-  const roue = document.getElementById('roue');
+  const rouleaux = [0, 1, 2].map(i => document.getElementById(`rouleau-${i}`));
   const boutonLancer = document.getElementById('bouton-lancer');
   const fondSuperposition = document.getElementById('fond-superposition');
   const carteResultat = document.getElementById('carte-resultat');
   const nbToursEl = document.getElementById('nb-tours');
   const nbGagnesEl = document.getElementById('nb-gagnes');
 
-  let rotationActuelle = 0;
   let nbTours = 0;
   let nbGagnes = 0;
   let enCours = false;
 
-  function construireRoue() {
-    const parts = [];
-    for (let i = 0; i < NB_CASES; i++) {
-      const debut = i * DEG_PAR_CASE;
-      const fin = debut + DEG_PAR_CASE;
-      let couleur;
-      if (i === 0) couleur = '#1f9d55';
-      else couleur = (i % 2 === 1) ? '#8f1d1d' : '#161616';
-      parts.push(`${couleur} ${debut}deg ${fin}deg`);
-    }
-    roue.style.background = `conic-gradient(${parts.join(', ')})`;
+  function emojiAuHasard() {
+    return ANIMAUX[Math.floor(Math.random() * ANIMAUX.length)].emoji;
   }
 
-  function tirerAnimalAuHasard() {
-    return ANIMAUX[Math.floor(Math.random() * ANIMAUX.length)];
+  function tirerSymboles() {
+    const gagne = Math.random() < CHANCE_DE_GAGNER;
+    if (gagne) {
+      const animal = ANIMAUX[Math.floor(Math.random() * ANIMAUX.length)];
+      return { gagne, animal, symboles: [animal.emoji, animal.emoji, animal.emoji] };
+    }
+    const indices = [
+      Math.floor(Math.random() * ANIMAUX.length),
+      Math.floor(Math.random() * ANIMAUX.length),
+      Math.floor(Math.random() * ANIMAUX.length),
+    ];
+    // Évite un alignement accidentel des 3 mêmes indices sur un tour perdant
+    if (indices[0] === indices[1] && indices[1] === indices[2]) {
+      indices[2] = (indices[2] + 1) % ANIMAUX.length;
+    }
+    return { gagne, animal: null, symboles: indices.map(i => ANIMAUX[i].emoji) };
+  }
+
+  function animerRouleau(rouleau, symboleFinal, duree) {
+    return new Promise(resolve => {
+      const span = rouleau.querySelector('span');
+      const intervalle = setInterval(() => {
+        span.textContent = emojiAuHasard();
+      }, 70);
+      setTimeout(() => {
+        clearInterval(intervalle);
+        span.textContent = symboleFinal;
+        rouleau.classList.add('arret');
+        setTimeout(() => rouleau.classList.remove('arret'), 260);
+        resolve();
+      }, duree);
+    });
   }
 
   function afficherResultat(gagne, animal) {
@@ -233,7 +262,7 @@
       carteResultat.innerHTML = `
         <div class="emoji">🌊</div>
         <h2>Perdu, retente ta chance</h2>
-        <p>La case verte de l'arche n'est pas tombée cette fois. Une seule case sur ${NB_CASES} fait gagner (2,5&nbsp;%), comme à la vraie roulette.</p>
+        <p>Il fallait aligner le même animal sur les trois rouleaux. Seulement 2,5&nbsp;% de chance à chaque tour, comme à la vraie machine à sous.</p>
         <button id="bouton-fermer">Rejouer</button>
       `;
     }
@@ -243,41 +272,28 @@
     });
   }
 
-  function lancerRoue() {
+  async function lancerMachine() {
     if (enCours) return;
     enCours = true;
     boutonLancer.disabled = true;
 
-    const gagne = Math.random() < CHANCE_DE_GAGNER;
-    let caseCible;
-    if (gagne) {
-      caseCible = 0;
-    } else {
-      caseCible = 1 + Math.floor(Math.random() * (NB_CASES - 1));
-    }
-    const angleCentreCase = caseCible * DEG_PAR_CASE + DEG_PAR_CASE / 2;
+    const { gagne, animal, symboles } = tirerSymboles();
 
-    const toursSupplementaires = 5 + Math.floor(Math.random() * 3);
-    const modActuel = rotationActuelle % 360;
-    const delta = ((360 - angleCentreCase - modActuel) % 360 + 360) % 360;
-    rotationActuelle += toursSupplementaires * 360 + delta;
+    await Promise.all(
+      rouleaux.map((rouleau, i) => animerRouleau(rouleau, symboles[i], DUREES_ARRET[i]))
+    );
 
-    roue.style.transform = `rotate(${rotationActuelle}deg)`;
+    nbTours++;
+    if (gagne) nbGagnes++;
+    nbToursEl.textContent = nbTours;
+    nbGagnesEl.textContent = nbGagnes;
 
-    setTimeout(() => {
-      nbTours++;
-      if (gagne) nbGagnes++;
-      nbToursEl.textContent = nbTours;
-      nbGagnesEl.textContent = nbGagnes;
-
-      afficherResultat(gagne, gagne ? tirerAnimalAuHasard() : null);
-      boutonLancer.disabled = false;
-      enCours = false;
-    }, 4100);
+    afficherResultat(gagne, animal);
+    boutonLancer.disabled = false;
+    enCours = false;
   }
 
-  construireRoue();
-  boutonLancer.addEventListener('click', lancerRoue);
+  boutonLancer.addEventListener('click', lancerMachine);
 </script>
 </body>
 </html>
