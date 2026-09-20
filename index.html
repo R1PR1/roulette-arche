@@ -157,7 +157,7 @@
   <h1>🐑 Machine de l'Arche 🕊️</h1>
   <p class="sous-titre">
     Trois rouleaux, comme une machine à sous de casino. Il faut aligner le
-    même animal sur les trois cases pour gagner : 2,5&nbsp;% de chance à
+    même animal sur les trois cases pour gagner : 70&nbsp;% de chance à
     chaque tour. Si tu gagnes, tu découvres l'animal tiré.
   </p>
 
@@ -172,7 +172,7 @@
   <button id="bouton-lancer">Tirer le levier</button>
   <div class="compteur">Tours joués : <span id="nb-tours">0</span> · Gagnés : <span id="nb-gagnes">0</span></div>
 
-  <footer>Jeu sans argent réel, purement pour le plaisir. Les probabilités sont fixes (2,5&nbsp;% de gain par tour) et indépendantes d'un tour à l'autre.</footer>
+  <footer>Jeu sans argent réel, purement pour le plaisir. Les probabilités sont fixes (70&nbsp;% de gain par tour) et indépendantes d'un tour à l'autre.</footer>
 
   <div id="fond-superposition">
     <div class="carte-resultat" id="carte-resultat"></div>
@@ -197,7 +197,7 @@
     { emoji:"🐍", nom:"Le serpent", texte:"On le trouve presque partout dans le monde sauf aux pôles. Carnivore selon l'espèce (rongeurs, insectes...), il avale ses proies entières, sans les mâcher." },
   ];
 
-  const CHANCE_DE_GAGNER = 0.025; // 2,5 %
+  const CHANCE_DE_GAGNER = 0.7; // 70 %
   const DUREES_ARRET = [1100, 1700, 2300]; // ms, arrêt échelonné des 3 rouleaux
 
   const rouleaux = [0, 1, 2].map(i => document.getElementById(`rouleau-${i}`));
@@ -262,7 +262,7 @@
       carteResultat.innerHTML = `
         <div class="emoji">🌊</div>
         <h2>Perdu, retente ta chance</h2>
-        <p>Il fallait aligner le même animal sur les trois rouleaux. Seulement 2,5&nbsp;% de chance à chaque tour, comme à la vraie machine à sous.</p>
+        <p>Il fallait aligner le même animal sur les trois rouleaux. 70&nbsp;% de chance à chaque tour.</p>
         <button id="bouton-fermer">Rejouer</button>
       `;
     }
